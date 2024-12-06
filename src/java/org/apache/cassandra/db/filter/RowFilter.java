@@ -705,7 +705,7 @@ public class RowFilter implements Iterable<RowFilter.Expression>
                 if (column.type.isCounter())
                 {
                     ByteBuffer foundValue = getValue(metadata, partitionKey, row);
-                    if (foundValue == null)
+                    if (foundValue == null || foundValue.remaining() == 0)
                         return false;
 
                     ByteBuffer counterValue = LongType.instance.decompose(CounterContext.instance().total(foundValue, ByteBufferAccessor.instance));
@@ -715,7 +715,7 @@ public class RowFilter implements Iterable<RowFilter.Expression>
                 {
                     // Note that CQL expression are always of the form 'x < 4', i.e. the tested value is on the left.
                     ByteBuffer foundValue = getValue(metadata, partitionKey, row);
-                    return foundValue != null && operator.isSatisfiedBy(column.type, foundValue, value);
+                    return foundValue != null && foundValue.remaining() > 0 && operator.isSatisfiedBy(column.type, foundValue, value);
                 }
             }
             else if (operator.appliesToCollectionElements() || operator.appliesToMapKeys())
@@ -730,7 +730,7 @@ public class RowFilter implements Iterable<RowFilter.Expression>
                 else
                 {
                     ByteBuffer foundValue = getValue(metadata, partitionKey, row);
-                    return foundValue != null && operator.isSatisfiedBy(column.type, foundValue, value);
+                    return foundValue != null && foundValue.remaining() > 0 && operator.isSatisfiedBy(column.type, foundValue, value);
                 }
             }
             throw new AssertionError();
