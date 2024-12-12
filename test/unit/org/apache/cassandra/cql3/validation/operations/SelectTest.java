@@ -2570,6 +2570,17 @@ public class SelectTest extends CQLTester
             assertRows(execute("SELECT pk0, pk1, s0, ck0, ck1, v0, v1 FROM %s WHERE s0=? ALLOW FILTERING", (byte) 122),
                        row(1000, 3000, (byte) 122, 300, 3, 60, 70));
         });
+
+        execute("DELETE v0 FROM %s WHERE pk0=1000 AND pk1=3000 AND ck0=300 AND ck1=3");
+
+        beforeAndAfterFlush(() -> {
+            assertRows(execute("SELECT pk0, pk1, s0, ck0, ck1, v0, v1 FROM %s WHERE s0=? ALLOW FILTERING", (byte) 122),
+                       row(1000, 3000, (byte) 122, 300, 3, null, 70));
+
+            assertRows(execute("SELECT pk0, pk1, s0, ck0, ck1, v0, v1 FROM %s WHERE pk0=1000 AND pk1=3000 AND ck0=300 AND ck1=3"),
+                       row(1000, 3000, (byte) 122, 300, 3, null, 70));
+        });
+
     }
 
     @Test

@@ -73,6 +73,7 @@ import org.apache.cassandra.utils.FBUtilities;
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkBindValueSet;
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkFalse;
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkNotNull;
+import static org.apache.cassandra.utils.FBUtilities.nowInSeconds;
 
 /**
  * A filter on which rows a given query should include or exclude.
@@ -529,9 +530,30 @@ public class RowFilter implements Iterable<RowFilter.Expression>
                     return row.clustering().bufferAt(column.position());
                 default:
                     Cell<?> cell = row.getCell(column);
-                    return cell == null ? null : cell.buffer();
+                    return getValidCellBuffer(cell, nowInSeconds());
             }
         }
+
+        /**
+         * Validates a cell's liveliness, tombstone status, and buffer contents.
+         *
+         * @param cell         The cell to validate.
+         * @param nowInSeconds The current time in seconds.
+         * @return A ByteBuffer (including valid empty buffers) if valid, or null otherwise.
+         */
+        private static ByteBuffer getValidCellBuffer(Cell<?> cell, long nowInSeconds) {
+            if (cell == null || cell.isTombstone()) {
+                return null;
+            }
+
+            if (!cell.isLive(nowInSeconds)) {
+                return null;
+            }
+
+            // Allow valid empty buffers
+            return cell.buffer();
+        }
+
 
         @Override
         public boolean equals(Object o)
@@ -705,7 +727,7 @@ public class RowFilter implements Iterable<RowFilter.Expression>
                 if (column.type.isCounter())
                 {
                     ByteBuffer foundValue = getValue(metadata, partitionKey, row);
-                    if (foundValue == null || foundValue.remaining() == 0)
+                    if (foundValue == null)
                         return false;
 
                     ByteBuffer counterValue = LongType.instance.decompose(CounterContext.instance().total(foundValue, ByteBufferAccessor.instance));
@@ -715,7 +737,7 @@ public class RowFilter implements Iterable<RowFilter.Expression>
                 {
                     // Note that CQL expression are always of the form 'x < 4', i.e. the tested value is on the left.
                     ByteBuffer foundValue = getValue(metadata, partitionKey, row);
-                    return foundValue != null && foundValue.remaining() > 0 && operator.isSatisfiedBy(column.type, foundValue, value);
+                    return foundValue != null && operator.isSatisfiedBy(column.type, foundValue, value);
                 }
             }
             else if (operator.appliesToCollectionElements() || operator.appliesToMapKeys())
@@ -730,7 +752,7 @@ public class RowFilter implements Iterable<RowFilter.Expression>
                 else
                 {
                     ByteBuffer foundValue = getValue(metadata, partitionKey, row);
-                    return foundValue != null && foundValue.remaining() > 0 && operator.isSatisfiedBy(column.type, foundValue, value);
+                    return foundValue != null && operator.isSatisfiedBy(column.type, foundValue, value);
                 }
             }
             throw new AssertionError();
