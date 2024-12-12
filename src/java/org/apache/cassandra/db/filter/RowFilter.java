@@ -530,30 +530,9 @@ public class RowFilter implements Iterable<RowFilter.Expression>
                     return row.clustering().bufferAt(column.position());
                 default:
                     Cell<?> cell = row.getCell(column);
-                    return getValidCellBuffer(cell, nowInSeconds());
+                    return Cell.getValidCellBuffer(cell, nowInSeconds());
             }
         }
-
-        /**
-         * Validates a cell's liveliness, tombstone status, and buffer contents.
-         *
-         * @param cell         The cell to validate.
-         * @param nowInSeconds The current time in seconds.
-         * @return A ByteBuffer (including valid empty buffers) if valid, or null otherwise.
-         */
-        private static ByteBuffer getValidCellBuffer(Cell<?> cell, long nowInSeconds) {
-            if (cell == null || cell.isTombstone()) {
-                return null;
-            }
-
-            if (!cell.isLive(nowInSeconds)) {
-                return null;
-            }
-
-            // Allow valid empty buffers
-            return cell.buffer();
-        }
-
 
         @Override
         public boolean equals(Object o)
