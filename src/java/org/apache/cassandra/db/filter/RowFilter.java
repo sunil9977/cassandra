@@ -73,7 +73,6 @@ import org.apache.cassandra.utils.FBUtilities;
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkBindValueSet;
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkFalse;
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkNotNull;
-import static org.apache.cassandra.utils.FBUtilities.nowInSeconds;
 
 /**
  * A filter on which rows a given query should include or exclude.
@@ -225,7 +224,7 @@ public class RowFilter implements Iterable<RowFilter.Expression>
 
                 // Short-circuit all partitions that won't match based on static and partition keys
                 for (Expression e : partitionLevelExpressions)
-                    if (!e.isSatisfiedBy(metadata, partition.partitionKey(), partition.staticRow()))
+                    if (!e.isSatisfiedBy(metadata, partition.partitionKey(), partition.staticRow(), nowInSec))
                     {
                         partition.close();
                         return null;
@@ -252,7 +251,7 @@ public class RowFilter implements Iterable<RowFilter.Expression>
                     return null;
 
                 for (Expression e : rowLevelExpressions)
-                    if (!e.isSatisfiedBy(metadata, pk, purged))
+                    if (!e.isSatisfiedBy(metadata, pk, purged, nowInSec))
                         return null;
 
                 return row;
@@ -304,7 +303,7 @@ public class RowFilter implements Iterable<RowFilter.Expression>
 
         for (Expression e : expressions)
         {
-            if (!e.isSatisfiedBy(metadata, partitionKey, purged))
+            if (!e.isSatisfiedBy(metadata, partitionKey, purged, nowInSec))
                 return false;
         }
         return true;
@@ -516,9 +515,9 @@ public class RowFilter implements Iterable<RowFilter.Expression>
          * (i.e. it should come from a RowIterator).
          * @return whether the row is satisfied by this expression.
          */
-        public abstract boolean isSatisfiedBy(TableMetadata metadata, DecoratedKey partitionKey, Row row);
+        public abstract boolean isSatisfiedBy(TableMetadata metadata, DecoratedKey partitionKey, Row row, long nowInSec);
 
-        protected ByteBuffer getValue(TableMetadata metadata, DecoratedKey partitionKey, Row row)
+        protected ByteBuffer getValue(TableMetadata metadata, DecoratedKey partitionKey, Row row, long nowInSec)
         {
             switch (column.kind)
             {
@@ -530,7 +529,7 @@ public class RowFilter implements Iterable<RowFilter.Expression>
                     return row.clustering().bufferAt(column.position());
                 default:
                     Cell<?> cell = row.getCell(column);
-                    return Cell.getValidCellBuffer(cell, nowInSeconds());
+                    return Cell.getValidCellBuffer(cell, nowInSec);
             }
         }
 
@@ -691,7 +690,8 @@ public class RowFilter implements Iterable<RowFilter.Expression>
             super(column, operator, value);
         }
 
-        public boolean isSatisfiedBy(TableMetadata metadata, DecoratedKey partitionKey, Row row)
+        @Override
+        public boolean isSatisfiedBy(TableMetadata metadata, DecoratedKey partitionKey, Row row, long nowInSec)
         {
             // We support null conditions for LWT (in ColumnCondition) but not for RowFilter.
             // TODO: we should try to merge both code someday.
@@ -705,7 +705,7 @@ public class RowFilter implements Iterable<RowFilter.Expression>
                 // representation. See CASSANDRA-11629
                 if (column.type.isCounter())
                 {
-                    ByteBuffer foundValue = getValue(metadata, partitionKey, row);
+                    ByteBuffer foundValue = getValue(metadata, partitionKey, row, nowInSec);
                     if (foundValue == null)
                         return false;
 
@@ -715,7 +715,7 @@ public class RowFilter implements Iterable<RowFilter.Expression>
                 else
                 {
                     // Note that CQL expression are always of the form 'x < 4', i.e. the tested value is on the left.
-                    ByteBuffer foundValue = getValue(metadata, partitionKey, row);
+                    ByteBuffer foundValue = getValue(metadata, partitionKey, row, nowInSec);
                     return foundValue != null && operator.isSatisfiedBy(column.type, foundValue, value);
                 }
             }
@@ -730,7 +730,7 @@ public class RowFilter implements Iterable<RowFilter.Expression>
                 }
                 else
                 {
-                    ByteBuffer foundValue = getValue(metadata, partitionKey, row);
+                    ByteBuffer foundValue = getValue(metadata, partitionKey, row, nowInSec);
                     return foundValue != null && operator.isSatisfiedBy(column.type, foundValue, value);
                 }
             }
@@ -815,7 +815,7 @@ public class RowFilter implements Iterable<RowFilter.Expression>
             return CompositeType.build(ByteBufferAccessor.instance, key, value);
         }
 
-        public boolean isSatisfiedBy(TableMetadata metadata, DecoratedKey partitionKey, Row row)
+        public boolean isSatisfiedBy(TableMetadata metadata, DecoratedKey partitionKey, Row row, long nowInSec)
         {
             assert key != null;
             // We support null conditions for LWT (in ColumnCondition) but not for RowFilter.
@@ -833,7 +833,7 @@ public class RowFilter implements Iterable<RowFilter.Expression>
             }
             else
             {
-                ByteBuffer serializedMap = getValue(metadata, partitionKey, row);
+                ByteBuffer serializedMap = getValue(metadata, partitionKey, row, nowInSec);
                 if (serializedMap == null)
                     return false;
 
@@ -934,7 +934,7 @@ public class RowFilter implements Iterable<RowFilter.Expression>
         }
 
         // Filtering by custom expressions isn't supported yet, so just accept any row
-        public boolean isSatisfiedBy(TableMetadata metadata, DecoratedKey partitionKey, Row row)
+        public boolean isSatisfiedBy(TableMetadata metadata, DecoratedKey partitionKey, Row row, long nowInSec)
         {
             return true;
         }
