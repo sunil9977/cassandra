@@ -174,6 +174,22 @@ public abstract class Cell<V> extends ColumnData
     // Overrides super type to provide a more precise return type.
     public abstract Cell<?> purge(DeletionPurger purger, int nowInSec);
 
+    public static ByteBuffer getValidCellBuffer(Cell<?> cell, int nowInSeconds)
+    {
+        if (cell == null || cell.isTombstone())
+        {
+            return null;
+        }
+
+        if (!cell.isLive(nowInSeconds))
+        {
+            return null;
+        }
+
+        // Allow valid empty buffers
+        return cell.buffer();
+    }
+
     /**
      * The serialization format for cell is:
      *     [ flags ][ timestamp ][ deletion time ][    ttl    ][ path size ][ path ][ value size ][ value ]
