@@ -2303,7 +2303,8 @@ public class SelectTest extends CQLTester
     }
 
     @Test
-    public void filteringOnDeletedStaticColumnValue() throws Throwable {
+    public void filteringOnDeletedStaticColumnValue() throws Throwable
+    {
         // Create table with int-only columns
         createTable("CREATE TABLE %s (pk0 int, pk1 int, ck0 int, ck1 int, s0 tinyint static, v0 int, v1 int, PRIMARY KEY ((pk0, pk1), ck0, ck1))");
 

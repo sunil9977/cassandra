@@ -484,7 +484,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
                     return row.clustering().bufferAt(column.position());
                 default:
                     Cell<?> cell = row.getCell(column);
-                    return Cell.getValidCellBuffer(cell, nowInSec);
+                    return cell == null || cell.isTombstone() || !cell.isLive(nowInSec) ? null : cell.buffer();
             }
         }
 
@@ -814,6 +814,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
             return CompositeType.build(ByteBufferAccessor.instance, key, value);
         }
 
+        @Override
         public boolean isSatisfiedBy(TableMetadata metadata, DecoratedKey partitionKey, Row row, int nowInSec)
         {
             assert key != null;
@@ -933,6 +934,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
         }
 
         // Filtering by custom expressions isn't supported yet, so just accept any row
+        @Override
         public boolean isSatisfiedBy(TableMetadata metadata, DecoratedKey partitionKey, Row row, int nowInSec)
         {
             return true;
