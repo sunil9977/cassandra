@@ -239,26 +239,6 @@ public abstract class Cell<V> extends ColumnData
     }
 
     /**
-     * Validates a cell's liveliness, tombstone status, and buffer contents.
-     *
-     * @param cell         The cell to validate.
-     * @param nowInSeconds The current time in seconds.
-     * @return A ByteBuffer (including valid empty buffers) if valid, or null otherwise.
-     */
-    public static ByteBuffer getValidCellBuffer(Cell<?> cell, long nowInSeconds) {
-        if (cell == null || cell.isTombstone()) {
-            return null;
-        }
-
-        if (!cell.isLive(nowInSeconds)) {
-            return null;
-        }
-
-        // Allow valid empty buffers
-        return cell.buffer();
-    }
-
-    /**
      * The serialization format for cell is:
      *     [ flags ][ timestamp ][ deletion time ][    ttl    ][ path size ][ path ][ value size ][ value ]
      *     [   1b  ][ 8b (vint) ][   4b (vint)   ][ 4b (vint) ][ 4b (vint) ][  arb ][  4b (vint) ][  arb  ]
