@@ -1,8 +1,21 @@
 5.0.5
+ * Fix reading mmapped trie-index exceeding 2GiB (CASSANDRA-20351)
+ * zero copy streaming allocates direct memory that isn't used, but does help to fragment the memory space (CASSANDRA-20577)
+ * CQLSSTableWriter supports setting the format (BTI or Big) (CASSANDRA-20609)
+ * Don't allocate in ThreadLocalReadAheadBuffer#close() (CASSANDRA-20551)
+ * Ensure RowFilter#isMutableIntersection() properly evaluates numeric ranges on a single column (CASSANDRA-20566)
+ * Switch memtable-related off-heap objects to Native Endian and Memory to Little Endian (CASSANDRA-20190)
+ * SAI marks an index as non-empty when a partial partition/row modifications is flushed due to repair (CASSANDRA-20567)
+ * SAI fails queries when multiple columns exist and a non-indexed column is a composite with a map (CASSANDRA-19891)
+ * Grant permission on keyspaces system_views and system_virtual_schema not possible (CASSANDRA-20171)
+ * Fix marking an SSTable as suspected and BufferPool leakage in case of a corrupted SSTable read during a compaction (CASSANDRA-20396)
+ * Introduce SSTableSimpleScanner for compaction (CASSANDRA-20092)
  * Avoid purging deletions in RowFilter when reconciliation is required (CASSANDRA-20541)
  * Fixed multiple single-node SAI query bugs relating to static columns (CASSANDRA-20338)
  * Upgrade com.datastax.cassandra:cassandra-driver-core:3.11.5 to org.apache.cassandra:cassandra-driver-core:3.12.1 (CASSANDRA-17231)
 Merged from 4.0:
+ * Updating a column with a new TTL but same expiration time is non-deterministic and causes repair mismatches. (CASSANDRA-20561)
+ * Avoid computing prepared statement size for unprepared batches (CASSANDRA-20556)
  * Fix Dropwizard Meter causes timeouts when infrequently used (CASSANDRA-19332)
 
 
